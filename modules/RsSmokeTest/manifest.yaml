@@ -1,0 +1,10 @@
+description: Simple implementation of a in-memory store in Rust
+provides:
+  main:
+    interface: kvs
+    description: This implements a persistent key-value store
+metadata:
+  license: https://opensource.org/licenses/Apache-2.0
+  authors:
+    - Holger Rapp
+
