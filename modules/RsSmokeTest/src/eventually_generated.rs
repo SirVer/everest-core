@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-// TODO(sirver): missing error handling
+// TODO(hrapp): missing error handling
 pub trait KvsService: Sync {
     /// This command removes the value stored under a given key
     ///
@@ -41,14 +41,14 @@ pub trait Module: Sync + Sized {
 pub struct GenericToSpecificModuleProxy<T: Module>(T);
 
 impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
-    fn handle_cmd(
+    fn handle_command(
         &mut self,
         implementation_id: &str,
         cmd_name: &str,
         parameters: HashMap<String, serde_json::Value>,
     ) -> ::everestrs::Result<serde_json::Value> {
         match implementation_id {
-            "main" => main::handle_cmd(self.0.main(), cmd_name, parameters),
+            "main" => main::handle_command(self.0.main(), cmd_name, parameters),
             _ => Err(everestrs::Error::InvalidArgument(
                 "Unknown implementation_id called.",
             )),
@@ -70,7 +70,7 @@ pub fn init_from_commandline<T: Module>(
 mod main {
     use std::collections::HashMap;
 
-    pub fn handle_cmd(
+    pub fn handle_command(
         main_service: &mut dyn super::KvsService,
         cmd_name: &str,
         mut parameters: HashMap<String, serde_json::Value>,
