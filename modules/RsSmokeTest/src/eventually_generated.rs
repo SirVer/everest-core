@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-// TODO(hrapp): missing error handling
 pub trait KvsService: Sync {
     /// This command removes the value stored under a given key
     ///
