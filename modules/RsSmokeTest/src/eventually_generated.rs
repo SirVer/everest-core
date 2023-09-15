@@ -29,18 +29,18 @@ pub trait KvsService: Sync {
     fn store(&mut self, key: String, value: ::serde_json::Value) -> ::everestrs::Result<()>;
 }
 
-pub struct Module<MainServiceImpl: KvsService> {
-    main_service: MainServiceImpl,
+pub trait Module: Sync + Sized {
+    fn on_ready(&mut self) {}
+    fn main(&mut self) -> &mut dyn KvsService;
 }
 
-impl<MainServiceImpl: KvsService> Module<MainServiceImpl> {
-    pub fn new(main_service: MainServiceImpl) -> everestrs::Module<Module<MainServiceImpl>> {
-        let specific_module = Module { main_service };
-        everestrs::Module::from_commandline(specific_module)
-    }
-}
+/// We want the user to just implement the `Module` trait above to get access to everything that
+/// EVerest has to offer, however for the `everestrs` library, we have to implement the
+/// `GenericModule`. This thin wrapper does the translation between the generic module and the
+/// specific implementation provided by the user.
+pub struct GenericToSpecificModuleProxy<T: Module>(T);
 
-impl<MainServiceImpl: KvsService> everestrs::ModuleImpl for Module<MainServiceImpl> {
+impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
     fn handle_cmd(
         &mut self,
         implementation_id: &str,
@@ -48,19 +48,30 @@ impl<MainServiceImpl: KvsService> everestrs::ModuleImpl for Module<MainServiceIm
         parameters: HashMap<String, serde_json::Value>,
     ) -> ::everestrs::Result<serde_json::Value> {
         match implementation_id {
-            "main" => main::handle_cmd(self, cmd_name, parameters),
+            "main" => main::handle_cmd(self.0.main(), cmd_name, parameters),
             _ => Err(everestrs::Error::InvalidArgument(
                 "Unknown implementation_id called.",
             )),
         }
     }
+
+    fn on_ready(&mut self) {
+        self.0.on_ready()
+    }
+}
+
+pub fn init_from_commandline<T: Module>(
+    specific_module: T,
+) -> everestrs::Runtime<GenericToSpecificModuleProxy<T>> {
+    let cnt = GenericToSpecificModuleProxy(specific_module);
+    everestrs::Runtime::from_commandline(cnt)
 }
 
 mod main {
     use std::collections::HashMap;
 
-    pub fn handle_cmd<MainServiceImpl: super::KvsService>(
-        module: &mut super::Module<MainServiceImpl>,
+    pub fn handle_cmd(
+        main_service: &mut dyn super::KvsService,
         cmd_name: &str,
         mut parameters: HashMap<String, serde_json::Value>,
     ) -> ::everestrs::Result<serde_json::Value> {
@@ -73,7 +84,7 @@ mod main {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("key"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = module.main_service.delete(key)?;
+                let retval = main_service.delete(key)?;
                 Ok(retval.into())
             }
             "exists" => {
@@ -84,7 +95,7 @@ mod main {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("key"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = module.main_service.exists(key)?;
+                let retval = main_service.exists(key)?;
                 Ok(retval.into())
             }
             "load" => {
@@ -95,7 +106,7 @@ mod main {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("key"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = module.main_service.load(key)?;
+                let retval = main_service.load(key)?;
                 Ok(retval.into())
             }
             "store" => {
@@ -112,7 +123,7 @@ mod main {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("value"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = module.main_service.store(key, value)?;
+                let retval = main_service.store(key, value)?;
                 Ok(retval.into())
             }
             _ => Err(everestrs::Error::InvalidArgument("Unknown command called.")),

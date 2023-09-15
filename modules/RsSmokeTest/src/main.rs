@@ -1,6 +1,4 @@
 use std::collections::BTreeMap;
-use std::env;
-use std::path::PathBuf;
 use std::{thread, time};
 
 mod eventually_generated;
@@ -33,15 +31,31 @@ impl eventually_generated::KvsService for Kvs {
     }
 }
 
+pub struct Module {
+    kvs: Kvs,
+}
+
+impl eventually_generated::Module for Module {
+    fn main(&mut self) -> &mut dyn eventually_generated::KvsService {
+        &mut self.kvs
+    }
+
+    fn on_ready(&mut self) {
+        println!("Welcome to the RsSmokeTest module!");
+    }
+}
+
 fn main() {
-    let kvs = Kvs {
-        values: BTreeMap::new(),
+    let module = Module {
+        kvs: Kvs {
+            values: BTreeMap::new(),
+        },
     };
-    let module = eventually_generated::Module::new(kvs);
+    let _mod = eventually_generated::init_from_commandline(module);
 
     // Everest is driving execution in the background for us, nothing to do.
     loop {
-    let dt = time::Duration::from_secs(120);
-    thread::sleep(dt);
+        let dt = time::Duration::from_millis(250);
+        thread::sleep(dt);
     }
 }
