@@ -1,33 +1,34 @@
 use std::collections::BTreeMap;
+use std::sync::RwLock;
 use std::{thread, time};
 
 mod eventually_generated;
 
 struct Kvs {
-    values: BTreeMap<String, serde_json::Value>,
+    values: RwLock<BTreeMap<String, serde_json::Value>>,
 }
 
 impl eventually_generated::KvsService for Kvs {
-    fn store(&mut self, key: String, value: serde_json::Value) -> ::everestrs::Result<()> {
-        self.values.insert(key, value);
+    fn store(&self, key: String, value: serde_json::Value) -> ::everestrs::Result<()> {
+        let mut v = self.values.write().expect("should never be poisoned.");
+        v.insert(key, value);
         Ok(())
     }
 
-    fn load(&mut self, key: String) -> ::everestrs::Result<serde_json::Value> {
-        Ok(self
-            .values
-            .get(&key)
-            .cloned()
-            .unwrap_or(serde_json::Value::Null))
+    fn load(&self, key: String) -> ::everestrs::Result<serde_json::Value> {
+        let v = self.values.read().expect("should never be poisoned.");
+        Ok(v.get(&key).cloned().unwrap_or(serde_json::Value::Null))
     }
 
-    fn delete(&mut self, key: String) -> ::everestrs::Result<()> {
-        self.values.remove(&key);
+    fn delete(&self, key: String) -> ::everestrs::Result<()> {
+        let mut v = self.values.write().expect("should never be poisoned.");
+        v.remove(&key);
         Ok(())
     }
 
-    fn exists(&mut self, key: String) -> ::everestrs::Result<bool> {
-        Ok(self.values.contains_key(&key))
+    fn exists(&self, key: String) -> ::everestrs::Result<bool> {
+        let v = self.values.read().expect("should never be poisoned.");
+        Ok(v.contains_key(&key))
     }
 }
 
@@ -36,11 +37,11 @@ pub struct Module {
 }
 
 impl eventually_generated::Module for Module {
-    fn main(&mut self) -> &mut dyn eventually_generated::KvsService {
-        &mut self.kvs
+    fn main(&self) -> &dyn eventually_generated::KvsService {
+        &self.kvs
     }
 
-    fn on_ready(&mut self) {
+    fn on_ready(&self) {
         println!("Welcome to the RsSmokeTest module!");
     }
 }
@@ -48,7 +49,7 @@ impl eventually_generated::Module for Module {
 fn main() {
     let module = Module {
         kvs: Kvs {
-            values: BTreeMap::new(),
+            values: RwLock::new(BTreeMap::new()),
         },
     };
     let _mod = eventually_generated::init_from_commandline(module);

@@ -4,14 +4,14 @@ pub trait KvsService: Sync {
     /// This command removes the value stored under a given key
     ///
     /// `key`: Key to delete the value for
-    fn delete(&mut self, key: String) -> everestrs::Result<()>;
+    fn delete(&self, key: String) -> everestrs::Result<()>;
 
     /// This command checks if something is stored under a given key
     ///
     /// `key`: Key to check the existence for
     ///
     /// Returns: Returns 'True' if something was stored for this key*/
-    fn exists(&mut self, key: String) -> ::everestrs::Result<bool>;
+    fn exists(&self, key: String) -> ::everestrs::Result<bool>;
 
     /// This command loads the previously stored value for a given key (it will return null if the
     /// key does not exist)
@@ -19,18 +19,18 @@ pub trait KvsService: Sync {
     /// `key`: Key to load the value for
     ///
     /// Returns: The previously stored value
-    fn load(&mut self, key: String) -> ::everestrs::Result<serde_json::Value>;
+    fn load(&self, key: String) -> ::everestrs::Result<serde_json::Value>;
 
     /// This command stores a value under a given key
     ///
     /// `key`: Key to store the value for
     /// `value`: Value to store
-    fn store(&mut self, key: String, value: ::serde_json::Value) -> ::everestrs::Result<()>;
+    fn store(&self, key: String, value: ::serde_json::Value) -> ::everestrs::Result<()>;
 }
 
 pub trait Module: Sync + Sized {
-    fn on_ready(&mut self) {}
-    fn main(&mut self) -> &mut dyn KvsService;
+    fn on_ready(&self) {}
+    fn main(&self) -> &dyn KvsService;
 }
 
 /// We want the user to just implement the `Module` trait above to get access to everything that
@@ -41,7 +41,7 @@ pub struct GenericToSpecificModuleProxy<T: Module>(T);
 
 impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
     fn handle_command(
-        &mut self,
+        &self,
         implementation_id: &str,
         cmd_name: &str,
         parameters: HashMap<String, serde_json::Value>,
@@ -54,7 +54,7 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
         }
     }
 
-    fn on_ready(&mut self) {
+    fn on_ready(&self) {
         self.0.on_ready()
     }
 }
@@ -70,7 +70,7 @@ mod main {
     use std::collections::HashMap;
 
     pub fn handle_command(
-        main_service: &mut dyn super::KvsService,
+        main_service: &dyn super::KvsService,
         cmd_name: &str,
         mut parameters: HashMap<String, serde_json::Value>,
     ) -> ::everestrs::Result<serde_json::Value> {
