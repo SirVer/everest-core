@@ -37,6 +37,10 @@ protected:
     virtual bool handle_restart() override;
     virtual types::ocpp::DataTransferResponse handle_data_transfer(std::string& vendor_id, std::string& message_id,
                                                                    std::string& data) override;
+    virtual types::ocpp::GetConfigurationResponse handle_get_configuration_key(Array& keys) override;
+    virtual types::ocpp::ConfigurationStatus handle_set_custom_configuration_key(std::string& key,
+                                                                                 std::string& value) override;
+    virtual void handle_monitor_configuration_keys(Array& keys) override;
 
     // ev@d2d1847a-7b88-41dd-ad07-92785f06f5c4:v1
     // insert your protected definitions here
@@ -51,6 +55,7 @@ private:
 
     // ev@3370e4dd-95f4-47a9-aaec-ea76f34a66c9:v1
     // insert your private definitions here
+    std::mutex m;
     // ev@3370e4dd-95f4-47a9-aaec-ea76f34a66c9:v1
 };
 

@@ -1,48 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright Pionix GmbH and Contributors to EVerest
-#ifndef POWERMETER_POWERMETER_IMPL_HPP
-#define POWERMETER_POWERMETER_IMPL_HPP
+#ifndef EMPTY_EMPTY_IMPL_HPP
+#define EMPTY_EMPTY_IMPL_HPP
 
 //
 // AUTO GENERATED - MARKED REGIONS WILL BE KEPT
 // template version 3
 //
 
-#include <generated/interfaces/powermeter/Implementation.hpp>
+#include <generated/interfaces/empty/Implementation.hpp>
 
-#include "../MicroMegaWattBSP.hpp"
+#include "../OCPPExtensionExample.hpp"
 
 // ev@75ac1216-19eb-4182-a85c-820f1fc2c091:v1
 // insert your custom include headers here
 // ev@75ac1216-19eb-4182-a85c-820f1fc2c091:v1
 
 namespace module {
-namespace powermeter {
+namespace empty {
 
 struct Conf {};
 
-class powermeterImpl : public powermeterImplBase {
+class emptyImpl : public emptyImplBase {
 public:
-    powermeterImpl() = delete;
-    powermeterImpl(Everest::ModuleAdapter* ev, const Everest::PtrContainer<MicroMegaWattBSP>& mod, Conf& config) :
-        powermeterImplBase(ev, "powermeter"), mod(mod), config(config){};
+    emptyImpl() = delete;
+    emptyImpl(Everest::ModuleAdapter* ev, const Everest::PtrContainer<OCPPExtensionExample>& mod, Conf& config) :
+        emptyImplBase(ev, "empty"), mod(mod), config(config){};
 
     // ev@8ea32d28-373f-4c90-ae5e-b4fcc74e2a61:v1
     // insert your public definitions here
     // ev@8ea32d28-373f-4c90-ae5e-b4fcc74e2a61:v1
 
 protected:
-    // command handler functions (virtual)
-    virtual types::powermeter::TransactionStartResponse
-    handle_start_transaction(types::powermeter::TransactionReq& value) override;
-    virtual types::powermeter::TransactionStopResponse handle_stop_transaction(std::string& transaction_id) override;
+    // no commands defined for this interface
 
     // ev@d2d1847a-7b88-41dd-ad07-92785f06f5c4:v1
     // insert your protected definitions here
     // ev@d2d1847a-7b88-41dd-ad07-92785f06f5c4:v1
 
 private:
-    const Everest::PtrContainer<MicroMegaWattBSP>& mod;
+    const Everest::PtrContainer<OCPPExtensionExample>& mod;
     const Conf& config;
 
     virtual void init() override;
@@ -57,7 +54,7 @@ private:
 // insert other definitions here
 // ev@3d7da0ad-02c2-493d-9920-0bbbd56b9876:v1
 
-} // namespace powermeter
+} // namespace empty
 } // namespace module
 
-#endif // POWERMETER_POWERMETER_IMPL_HPP
+#endif // EMPTY_EMPTY_IMPL_HPP
