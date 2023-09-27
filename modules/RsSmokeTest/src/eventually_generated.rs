@@ -59,9 +59,7 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
     }
 }
 
-pub fn init_from_commandline<T: Module>(
-    specific_module: T,
-) -> everestrs::Runtime<GenericToSpecificModuleProxy<T>> {
+pub fn init_from_commandline<T: Module + 'static>(specific_module: T) -> everestrs::Runtime {
     let cnt = GenericToSpecificModuleProxy(specific_module);
     everestrs::Runtime::from_commandline(cnt)
 }

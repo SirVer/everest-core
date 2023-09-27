@@ -72,7 +72,7 @@ active_modules:
         - implementation_id: board_support
           module_id: connector_1_powerpath
       hlc:
-        - implementation_id: charger
+        - implementation_id: main
           module_id: iso15118_charger
       powermeter_grid_side:
         - implementation_id: powermeter
@@ -99,11 +99,10 @@ active_modules:
     connections: {}
     module: PyEvJosev
   iso15118_charger:
-    config_module:
-      device: auto
-      tls_security: allow
     connections: {}
-    module: EvseV2G
+    module: DummyV2G
+  transient_store:
+    module: RsSmokeTest
   persistent_store:
     config_module:
       sqlite_db_file_path: everest_persistent_store.db
@@ -154,6 +153,17 @@ active_modules:
     module: JsYetiSimulator
     telemetry:
       id: 1
+  example_1:
+    config_implementation:
+      example:
+        current: 5
+        enum_test: one
+        enum_test2: 2
+    connections:
+      kvs:
+        - implementation_id: main
+          module_id: persistent_store
+    module: Example
 'x-module-layout':
   api:
     position:
