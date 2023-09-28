@@ -54,6 +54,18 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
         }
     }
 
+    fn handle_variable(
+        &self,
+        implementation_id: &str,
+        name: &str,
+        value: serde_json::Value,
+    ) -> ::everestrs::Result<()> {
+        // NOCOM(#sirver): What to do?
+        println!("#sirver Variable: implementation_id: {:#?},name: {:#?},value: {:#?}", implementation_id, name, value);
+        Ok(())
+    }
+
+
     fn on_ready(&self) {
         self.0.on_ready()
     }

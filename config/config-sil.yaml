@@ -102,6 +102,10 @@ active_modules:
     connections: {}
     module: DummyV2G
   transient_store:
+    connections:
+      example:
+        - implementation_id: example
+          module_id: example_1
     module: RsSmokeTest
   persistent_store:
     config_module:
