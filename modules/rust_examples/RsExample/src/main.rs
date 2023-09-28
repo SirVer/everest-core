@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::RwLock;
 use std::{thread, time};
+use eventually_generated::KvsService;
 
 mod eventually_generated;
 
@@ -8,7 +9,7 @@ pub struct Module {
     values: RwLock<BTreeMap<String, serde_json::Value>>,
 }
 
-impl eventually_generated::KvsService for Module {
+impl KvsService for Module {
     fn store(&self, key: String, value: serde_json::Value) -> ::everestrs::Result<()> {
         let mut v = self.values.write().expect("should never be poisoned.");
         v.insert(key, value);
@@ -32,23 +33,31 @@ impl eventually_generated::KvsService for Module {
     }
 }
 
-impl eventually_generated::ExampleSubscriber for Module {
-    fn on_max_current(&self, value: f64) {
-        println!("Received max_current: {value}");
+impl eventually_generated::ExampleService for Module {
+    fn uses_something(&self, key: String) -> ::everestrs::Result<bool> {
+        // NOCOM(#sirver): copy functionality from c++ module.
+        self.exists(key)
     }
 }
 
+// NOCOM(#sirver): into other module
+// impl eventually_generated::ExampleSubscriber for Module {
+    // fn on_max_current(&self, value: f64) {
+        // println!("Received max_current: {value}");
+    // }
+// }
+
 impl eventually_generated::Module for Module {
-    fn main(&self) -> &dyn eventually_generated::KvsService {
+    fn foobar(&self) -> &dyn eventually_generated::ExampleService {
         self
     }
 
-    fn foobar_subscriber(&self) -> &dyn eventually_generated::ExampleSubscriber {
+    fn my_store(&self) -> &dyn KvsService {
         self
     }
 
     fn on_ready(&self) {
-        println!("Welcome to the RsSmokeTest module!");
+        println!("Welcome to the RsExample module!");
     }
 }
 

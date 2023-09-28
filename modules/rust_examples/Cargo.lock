@@ -122,6 +122,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rs_example"
+version = "0.1.0"
+dependencies = [
+ "everestrs",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -156,15 +165,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "smoke_test"
-version = "0.1.0"
-dependencies = [
- "everestrs",
- "serde",
- "serde_json",
 ]
 
 [[package]]
