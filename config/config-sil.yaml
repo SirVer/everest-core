@@ -103,7 +103,7 @@ active_modules:
     module: DummyV2G
   transient_store:
     connections:
-      example:
+      foobar:
         - implementation_id: example
           module_id: example_1
     module: RsSmokeTest

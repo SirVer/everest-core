@@ -35,7 +35,7 @@ pub trait ExampleSubscriber: Sync {
 pub trait Module: Sync + Sized {
     fn on_ready(&self) {}
     fn main(&self) -> &dyn KvsService;
-    fn example_subscriber(&self) -> &dyn ExampleSubscriber;
+    fn foobar_subscriber(&self) -> &dyn ExampleSubscriber;
 }
 
 /// We want the user to just implement the `Module` trait above to get access to everything that
@@ -66,7 +66,7 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
         value: serde_json::Value,
     ) -> ::everestrs::Result<()> {
         match implementation_id {
-            "example" => example::handle_variable(self.0.example_subscriber(), name, value),
+            "foobar" => foobar::handle_variable(self.0.foobar_subscriber(), name, value),
             _ => Err(everestrs::Error::InvalidArgument(
                 "Unknown variable received.",
             )),
@@ -83,9 +83,9 @@ pub fn init_from_commandline<T: Module + 'static>(specific_module: T) -> everest
     everestrs::Runtime::from_commandline(cnt)
 }
 
-mod example {
+mod foobar {
     pub(super) fn handle_variable(
-        example_subscriber: &dyn super::ExampleSubscriber,
+        foobar_subscriber: &dyn super::ExampleSubscriber,
         name: &str,
         value: serde_json::Value,
     ) -> ::everestrs::Result<()> {
@@ -93,7 +93,7 @@ mod example {
             "max_current" => {
                 let v: f64 = ::serde_json::from_value(value)
                     .map_err(|_| everestrs::Error::InvalidArgument("max_current"))?;
-                example_subscriber.on_max_current(v);
+                foobar_subscriber.on_max_current(v);
                 Ok(())
             }
             _ => Err(everestrs::Error::InvalidArgument(

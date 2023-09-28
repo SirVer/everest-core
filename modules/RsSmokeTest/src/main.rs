@@ -43,7 +43,7 @@ impl eventually_generated::Module for Module {
         self
     }
 
-    fn example_subscriber(&self) -> &dyn eventually_generated::ExampleSubscriber {
+    fn foobar_subscriber(&self) -> &dyn eventually_generated::ExampleSubscriber {
         self
     }
 
