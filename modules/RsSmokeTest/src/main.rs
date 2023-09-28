@@ -4,11 +4,11 @@ use std::{thread, time};
 
 mod eventually_generated;
 
-struct Kvs {
+pub struct Module {
     values: RwLock<BTreeMap<String, serde_json::Value>>,
 }
 
-impl eventually_generated::KvsService for Kvs {
+impl eventually_generated::KvsService for Module {
     fn store(&self, key: String, value: serde_json::Value) -> ::everestrs::Result<()> {
         let mut v = self.values.write().expect("should never be poisoned.");
         v.insert(key, value);
@@ -32,13 +32,19 @@ impl eventually_generated::KvsService for Kvs {
     }
 }
 
-pub struct Module {
-    kvs: Kvs,
+impl eventually_generated::ExampleSubscriber for Module {
+    fn on_max_current(&self, value: f64) {
+        println!("Received max_current: {value}");
+    }
 }
 
 impl eventually_generated::Module for Module {
     fn main(&self) -> &dyn eventually_generated::KvsService {
-        &self.kvs
+        self
+    }
+
+    fn example_subscriber(&self) -> &dyn eventually_generated::ExampleSubscriber {
+        self
     }
 
     fn on_ready(&self) {
@@ -48,9 +54,7 @@ impl eventually_generated::Module for Module {
 
 fn main() {
     let module = Module {
-        kvs: Kvs {
-            values: RwLock::new(BTreeMap::new()),
-        },
+        values: RwLock::new(BTreeMap::new()),
     };
     let _mod = eventually_generated::init_from_commandline(module);
 

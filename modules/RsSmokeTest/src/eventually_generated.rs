@@ -28,9 +28,14 @@ pub trait KvsService: Sync {
     fn store(&self, key: String, value: ::serde_json::Value) -> ::everestrs::Result<()>;
 }
 
+pub trait ExampleSubscriber: Sync {
+    fn on_max_current(&self, value: f64);
+}
+
 pub trait Module: Sync + Sized {
     fn on_ready(&self) {}
     fn main(&self) -> &dyn KvsService;
+    fn example_subscriber(&self) -> &dyn ExampleSubscriber;
 }
 
 /// We want the user to just implement the `Module` trait above to get access to everything that
@@ -60,11 +65,13 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
         name: &str,
         value: serde_json::Value,
     ) -> ::everestrs::Result<()> {
-        // NOCOM(#sirver): What to do?
-        println!("#sirver Variable: implementation_id: {:#?},name: {:#?},value: {:#?}", implementation_id, name, value);
-        Ok(())
+        match implementation_id {
+            "example" => example::handle_variable(self.0.example_subscriber(), name, value),
+            _ => Err(everestrs::Error::InvalidArgument(
+                "Unknown variable received.",
+            )),
+        }
     }
-
 
     fn on_ready(&self) {
         self.0.on_ready()
@@ -76,10 +83,30 @@ pub fn init_from_commandline<T: Module + 'static>(specific_module: T) -> everest
     everestrs::Runtime::from_commandline(cnt)
 }
 
+mod example {
+    pub(super) fn handle_variable(
+        example_subscriber: &dyn super::ExampleSubscriber,
+        name: &str,
+        value: serde_json::Value,
+    ) -> ::everestrs::Result<()> {
+        match name {
+            "max_current" => {
+                let v: f64 = ::serde_json::from_value(value)
+                    .map_err(|_| everestrs::Error::InvalidArgument("max_current"))?;
+                example_subscriber.on_max_current(v);
+                Ok(())
+            }
+            _ => Err(everestrs::Error::InvalidArgument(
+                "Unknown variable received.",
+            )),
+        }
+    }
+}
+
 mod main {
     use std::collections::HashMap;
 
-    pub fn handle_command(
+    pub(super) fn handle_command(
         main_service: &dyn super::KvsService,
         cmd_name: &str,
         mut parameters: HashMap<String, serde_json::Value>,
