@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-pub trait KvsService: Sync {
+pub trait KvsService {
     /// This command removes the value stored under a given key
     ///
     /// `key`: Key to delete the value for
@@ -29,7 +29,7 @@ pub trait KvsService: Sync {
 }
 
 /// This interface defines an example interface that uses multiple framework features
-pub trait ExampleService: Sync {
+pub trait ExampleService {
     /// This command checks if something is stored under a given key
     ///
     /// `key`: Key to check the existence for
@@ -38,23 +38,74 @@ pub trait ExampleService: Sync {
     fn uses_something(&self, key: String) -> ::everestrs::Result<bool>;
 }
 
-// NOCOM(#sirver): figure out how to publish something here.
-// vars:
-  // max_current:
-    // description: Provides maximum current of this supply in ampere
-    // type: number
+pub struct FoobarPublisher {
+    raw_publisher: everestrs::RawPublisher,
+}
 
-// NOCOM(#sirver): other module
-// pub trait ExampleSubscriber: Sync {
-    // fn on_max_current(&self, value: f64);
-// }
+impl FoobarPublisher {
+    pub fn publish_max_current(&self, max_current: f64) -> ::everestrs::Result<()> {
+        self.raw_publisher
+            .publish_variable("foobar", "max_current", &max_current);
+        Ok(())
+    }
+}
 
-pub trait Module: Sync + Sized {
+/// This interface defines a simple key-value-store interface
+pub struct KvsClient {
+    raw_publisher: everestrs::RawPublisher,
+}
+
+impl KvsClient {
+    /// This command removes the value stored under a given key
+    ///
+    /// `key`: Key to delete the value for
+    pub fn delete(&self, key: String) -> everestrs::Result<()> {
+        let args = serde_json::json!({
+            "key": key,
+        });
+        let blob = self
+            .raw_publisher
+            .call_command("their_store", "delete", &args);
+        let return_value: () = ::serde_json::from_value(blob)
+            .map_err(|_| everestrs::Error::InvalidArgument("return_value"))?;
+        Ok(return_value)
+    }
+
+    /// This command checks if something is stored under a given key
+    ///
+    /// `key`: Key to check the existence for
+    ///
+    /// Returns: Returns 'True' if something was stored for this key*/
+    pub fn exists(&self, key: String) -> ::everestrs::Result<bool> {
+        // NOCOM(#sirver): Implement
+        todo!();
+    }
+
+    /// This command loads the previously stored value for a given key (it will return null if the
+    /// key does not exist)
+    ///
+    /// `key`: Key to load the value for
+    ///
+    /// Returns: The previously stored value
+    pub fn load(&self, key: String) -> ::everestrs::Result<serde_json::Value> {
+        // NOCOM(#sirver): Implement
+        todo!();
+    }
+
+    /// This command stores a value under a given key
+    ///
+    /// `key`: Key to store the value for
+    /// `value`: Value to store
+    pub fn store(&self, key: String, value: ::serde_json::Value) -> ::everestrs::Result<()> {
+        // NOCOM(#sirver): Implement
+        todo!();
+    }
+}
+
+pub trait Module: Sized {
     fn on_ready(&self) {}
     fn foobar(&self) -> &dyn ExampleService;
     fn my_store(&self) -> &dyn KvsService;
-    // NOCOM(#sirver): other service
-    // fn foobar_subscriber(&self) -> &dyn ExampleSubscriber;
 }
 
 /// We want the user to just implement the `Module` trait above to get access to everything that
@@ -88,8 +139,6 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
         value: serde_json::Value,
     ) -> ::everestrs::Result<()> {
         match implementation_id {
-            // NOCOM(#sirver): no variables here to handle
-            // "foobar" => foobar::handle_variable(self.0.foobar_subscriber(), name, value),
             _ => Err(everestrs::Error::InvalidArgument(
                 "Unknown variable received.",
             )),
@@ -101,31 +150,21 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
     }
 }
 
-pub fn init_from_commandline<T: Module + 'static>(specific_module: T) -> everestrs::Runtime {
-    let cnt = GenericToSpecificModuleProxy(specific_module);
-    everestrs::Runtime::from_commandline(cnt)
+pub fn init_from_commandline<T: Module + 'static>(
+    init_module: impl FnOnce(FoobarPublisher, KvsClient) -> T,
+) -> everestrs::Runtime {
+    everestrs::Runtime::from_commandline(|raw_publisher| {
+        let foobar_publisher = FoobarPublisher {
+            raw_publisher: raw_publisher.clone(),
+        };
+        let their_store_client = KvsClient { raw_publisher };
+        let specific_module = init_module(foobar_publisher, their_store_client);
+        GenericToSpecificModuleProxy(specific_module)
+    })
 }
 
 mod foobar {
     use std::collections::HashMap;
-    // NOCOM(#sirver): in other module
-    // pub(super) fn handle_variable(
-        // foobar_subscriber: &dyn super::ExampleSubscriber,
-        // name: &str,
-        // value: serde_json::Value,
-    // ) -> ::everestrs::Result<()> {
-        // match name {
-            // "max_current" => {
-                // let v: f64 = ::serde_json::from_value(value)
-                    // .map_err(|_| everestrs::Error::InvalidArgument("max_current"))?;
-                // foobar_subscriber.on_max_current(v);
-                // Ok(())
-            // }
-            // _ => Err(everestrs::Error::InvalidArgument(
-                // "Unknown variable received.",
-            // )),
-        // }
-    // }
 
     #[allow(unused_variables)]
     pub(super) fn handle_command(

@@ -131,6 +131,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rs_example_user"
+version = "0.1.0"
+dependencies = [
+ "everestrs",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ryu"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"

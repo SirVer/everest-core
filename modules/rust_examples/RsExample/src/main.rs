@@ -1,51 +1,53 @@
-use std::collections::BTreeMap;
-use std::sync::RwLock;
-use std::{thread, time};
 use eventually_generated::KvsService;
+use std::{thread, time};
 
 mod eventually_generated;
 
 pub struct Module {
-    values: RwLock<BTreeMap<String, serde_json::Value>>,
+    foobar_publisher: eventually_generated::FoobarPublisher,
+    their_store_client: eventually_generated::KvsClient,
 }
 
 impl KvsService for Module {
     fn store(&self, key: String, value: serde_json::Value) -> ::everestrs::Result<()> {
-        let mut v = self.values.write().expect("should never be poisoned.");
-        v.insert(key, value);
-        Ok(())
+        self.their_store_client.store(key, value)
     }
 
     fn load(&self, key: String) -> ::everestrs::Result<serde_json::Value> {
-        let v = self.values.read().expect("should never be poisoned.");
-        Ok(v.get(&key).cloned().unwrap_or(serde_json::Value::Null))
+        self.their_store_client.load(key)
     }
 
     fn delete(&self, key: String) -> ::everestrs::Result<()> {
-        let mut v = self.values.write().expect("should never be poisoned.");
-        v.remove(&key);
-        Ok(())
+        self.their_store_client.delete(key)
     }
 
     fn exists(&self, key: String) -> ::everestrs::Result<bool> {
-        let v = self.values.read().expect("should never be poisoned.");
-        Ok(v.contains_key(&key))
+        self.their_store_client.exists(key)
     }
 }
 
 impl eventually_generated::ExampleService for Module {
     fn uses_something(&self, key: String) -> ::everestrs::Result<bool> {
-        // NOCOM(#sirver): copy functionality from c++ module.
-        self.exists(key)
+        if !self.their_store_client.exists(key.clone())? {
+            println!("IT SHOULD NOT AND DOES NOT EXIST");
+        }
+
+        let test_array = vec![1, 2, 3];
+        self.their_store_client
+            .store(key.clone(), test_array.clone().into())?;
+
+        let exi = self.their_store_client.exists(key.clone())?;
+        if exi {
+            println!("IT ACTUALLY EXISTS");
+        }
+
+        let ret: Vec<i32> = serde_json::from_value(self.their_store_client.load(key)?)
+            .expect("Wanted an array as return value");
+
+        println!("loaded array: {ret:?}, original array: {test_array:?}");
+        Ok(exi)
     }
 }
-
-// NOCOM(#sirver): into other module
-// impl eventually_generated::ExampleSubscriber for Module {
-    // fn on_max_current(&self, value: f64) {
-        // println!("Received max_current: {value}");
-    // }
-// }
 
 impl eventually_generated::Module for Module {
     fn foobar(&self) -> &dyn eventually_generated::ExampleService {
@@ -58,14 +60,20 @@ impl eventually_generated::Module for Module {
 
     fn on_ready(&self) {
         println!("Welcome to the RsExample module!");
+        // Ignoring any potential errors here.
+        // TODO(sirver): This should use the configuration values
+        let _ = self.foobar_publisher.publish_max_current(32.);
     }
 }
 
 fn main() {
-    let module = Module {
-        values: RwLock::new(BTreeMap::new()),
-    };
-    let _mod = eventually_generated::init_from_commandline(module);
+    let _mod =
+        eventually_generated::init_from_commandline(|foobar_publisher, their_store_client| {
+            Module {
+                foobar_publisher,
+                their_store_client,
+            }
+        });
 
     // Everest is driving execution in the background for us, nothing to do.
     loop {
