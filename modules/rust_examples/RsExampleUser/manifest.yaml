@@ -6,6 +6,8 @@ provides:
 requires:
   their_example:
     interface: example
+  another_example:
+    interface: example
 metadata:
   license: https://opensource.org/licenses/Apache-2.0
   authors:
