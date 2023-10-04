@@ -95,7 +95,7 @@ impl Subscriber for ModuleSubscriber {
     }
 
     fn on_ready(&self) {
-        todo!()
+        self.on_ready.on_ready();
     }
 }
 
@@ -120,65 +120,6 @@ impl Module {
         }
     }
 }
-
-// pub trait Module: Sized {
-//     fn on_ready(&self) {}
-//     fn main(&self) -> &dyn ExampleUserService;
-//     fn their_example_subscriber(&self) -> &dyn ExampleSubscriber;
-// }
-
-// We want the user to just implement the `Module` trait above to get access to everything that
-// EVerest has to offer, however for the `everestrs` library, we have to implement the
-// `GenericModule`. This thin wrapper does the translation between the generic module and the
-// specific implementation provided by the user.
-// pub struct GenericToSpecificModuleProxy<T: Module>(T);
-
-// impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
-//     #[allow(unused_variables)]
-//     fn handle_command(
-//         &self,
-//         implementation_id: &str,
-//         cmd_name: &str,
-//         parameters: HashMap<String, serde_json::Value>,
-//     ) -> ::everestrs::Result<serde_json::Value> {
-//         match implementation_id {
-//             _ => Err(everestrs::Error::InvalidArgument(
-//                 "Unknown implementation_id called.",
-//             )),
-//         }
-//     }
-
-//     #[allow(unused_variables)]
-//     fn handle_variable(
-//         &self,
-//         implementation_id: &str,
-//         name: &str,
-//         value: serde_json::Value,
-//     ) -> ::everestrs::Result<()> {
-//         match implementation_id {
-//             "their_example" => {
-//                 their_example::handle_variable(self.0.their_example_subscriber(), name, value)
-//             }
-//             _ => Err(everestrs::Error::InvalidArgument(
-//                 "Unknown variable received.",
-//             )),
-//         }
-//     }
-
-//     fn on_ready(&self) {
-//         self.0.on_ready()
-//     }
-// }
-
-// pub fn init_from_commandline<T: Module + 'static>(
-//     init_module: impl FnOnce(ExampleClient) -> T,
-// ) -> everestrs::Runtime {
-//     everestrs::Runtime::from_commandline(|raw_publisher| {
-//         let their_example_client = ExampleClient { raw_publisher };
-//         let specific_module = init_module(their_example_client);
-//         GenericToSpecificModuleProxy(specific_module)
-//     })
-// }
 
 mod example_interface {
     // use everestrs::Runtime;
