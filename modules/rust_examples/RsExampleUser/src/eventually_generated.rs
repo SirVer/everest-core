@@ -1,4 +1,4 @@
-use everestrs::{Error, Result, RuntimePublisher, RuntimeSubscriber, Subscriber};
+use everestrs::{Error, Result, Runtime, Subscriber};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 /// a shared-ptr to the cpp implementation.
 #[derive(Clone)]
 pub struct ExamplePublisher {
-    runtime: RuntimePublisher,
+    runtime: Arc<Mutex<Runtime>>,
 }
 
 impl ExamplePublisher {
@@ -21,6 +21,8 @@ impl ExamplePublisher {
         });
         let blob = self
             .runtime
+            .try_lock()
+            .map_err(|_| Error::Internal)?
             .call_command("their_example", "uses_something", &args);
         let return_value: bool =
             ::serde_json::from_value(blob).map_err(|_| Error::InvalidArgument("return_value"))?;
@@ -59,9 +61,6 @@ pub struct Module {
 
     /// The publisher.
     publisher: ModulePublisher,
-
-    /// The handle to the subscriber runtime.
-    runtime: Mutex<Option<RuntimeSubscriber>>,
 }
 
 impl Module {
@@ -70,7 +69,7 @@ impl Module {
         another_example: Arc<dyn ExampleSubscriber>,
         on_ready: Arc<dyn OnReadySubscriber>,
     ) -> Arc<Self> {
-        let runtime = RuntimePublisher::new();
+        let runtime = Arc::new(Mutex::new(Runtime::new()));
         let publisher = ModulePublisher {
             their_publisher: ExamplePublisher {
                 runtime: runtime.clone(),
@@ -85,11 +84,10 @@ impl Module {
             another_example,
             on_ready,
             publisher: publisher,
-            runtime: Mutex::new(None), // module: runtime.clone(),
+            // runtime: runtime.clone(),
         });
         let weak_this = Arc::<Module>::downgrade(&this);
-        *this.runtime.lock().unwrap() = Some(RuntimeSubscriber::new(&runtime, weak_this));
-
+        runtime.lock().unwrap().set_subscriber(weak_this);
         this
     }
 }
