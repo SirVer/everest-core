@@ -2,14 +2,37 @@ use everestrs::{Error, Result, Runtime, Subscriber};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// The publisher for the example module. The class is clone-able and just holds
-/// a shared-ptr to the cpp implementation.
+/// Trait for the user to implement.
+pub trait OnReadySubscriber: Sync + Send {
+    fn on_ready(&self, pub_impl: &ModulePublisher);
+}
+
+/// Generated from `manifest.provides.main`. At best we will omit empty traits.
+pub trait ExampleUserServiceSubscriber: Sync + Send {}
+
+/// Generated from `manifest.provides.main`. At best we will omit empty structs.
 #[derive(Clone)]
-pub struct ExamplePublisher {
+pub struct ExampleUserServicePublisher {
+    #[allow(unused)]
     runtime: Arc<Runtime>,
 }
 
-impl ExamplePublisher {
+impl ExampleUserServicePublisher {}
+
+/// Generated from `manifest.requires.their_example` and
+/// `manifest.requires.another_example`.
+trait ExampleClientSubscriber {
+    fn max_current(&self, pub_impl: &ModulePublisher, max_current: f64);
+}
+
+/// The publisher for the example module. The class is clone-able and just holds
+/// a shared-ptr to the cpp implementation.
+#[derive(Clone)]
+pub struct ExampleClientPublisher {
+    runtime: Arc<Runtime>,
+}
+
+impl ExampleClientPublisher {
     /// This command checks if something is stored under a given key
     ///
     /// `key`: Key to check the existence for
@@ -21,8 +44,6 @@ impl ExamplePublisher {
         });
         let blob = self
             .runtime
-            // .try_lock()
-            // .map_err(|_| Error::Internal)?
             .call_command("their_example", "uses_something", &args);
         let return_value: bool =
             ::serde_json::from_value(blob).map_err(|_| Error::InvalidArgument("return_value"))?;
@@ -33,18 +54,14 @@ impl ExamplePublisher {
 /// The collection of all publishers for this module.
 #[derive(Clone)]
 pub struct ModulePublisher {
-    pub their_publisher: ExamplePublisher,
-    pub another_publisher: ExamplePublisher,
+    pub main_publisher: ExampleUserServicePublisher,
+    pub their_publisher: ExampleClientPublisher,
+    pub another_publisher: ExampleClientPublisher,
 }
 
 /// Trait for the user to implement.
 pub trait ExampleSubscriber: Sync + Send {
     fn on_max_current(&self, pub_impl: &ModulePublisher, value: f64);
-}
-
-/// Trait for the user to implement.
-pub trait OnReadySubscriber: Sync + Send {
-    fn on_ready(&self, pub_impl: &ModulePublisher);
 }
 
 /// The struct holding everything necessary for the module to run.
@@ -55,9 +72,10 @@ pub trait OnReadySubscriber: Sync + Send {
 /// until dropped.
 pub struct Module {
     /// All subscribers.
+    on_ready: Arc<dyn OnReadySubscriber>,
+    main: Arc<dyn ExampleUserServiceSubscriber>,
     their_example: Arc<dyn ExampleSubscriber>,
     another_example: Arc<dyn ExampleSubscriber>,
-    on_ready: Arc<dyn OnReadySubscriber>,
 
     /// The publisher.
     publisher: ModulePublisher,
@@ -66,29 +84,32 @@ pub struct Module {
 impl Module {
     #[must_use]
     pub fn new(
+        on_ready: Arc<dyn OnReadySubscriber>,
+        main: Arc<dyn ExampleUserServiceSubscriber>,
         their_example: Arc<dyn ExampleSubscriber>,
         another_example: Arc<dyn ExampleSubscriber>,
-        on_ready: Arc<dyn OnReadySubscriber>,
     ) -> Arc<Self> {
         let runtime = Arc::new(Runtime::new());
         let publisher = ModulePublisher {
-            their_publisher: ExamplePublisher {
+            main_publisher: ExampleUserServicePublisher {
                 runtime: runtime.clone(),
             },
-            another_publisher: ExamplePublisher {
+            their_publisher: ExampleClientPublisher {
+                runtime: runtime.clone(),
+            },
+            another_publisher: ExampleClientPublisher {
                 runtime: runtime.clone(),
             },
         };
 
         let this = Arc::new(Self {
+            on_ready,
+            main,
             their_example,
             another_example,
-            on_ready,
             publisher: publisher,
-            // runtime: runtime.clone(),
         });
-        let weak_this = Arc::<Module>::downgrade(&this);
-        runtime.set_subscriber(weak_this);
+        runtime.set_subscriber(Arc::<Module>::downgrade(&this));
         this
     }
 }

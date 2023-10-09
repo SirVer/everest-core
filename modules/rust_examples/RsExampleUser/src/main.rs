@@ -34,6 +34,9 @@ impl eventually_generated::ExampleSubscriber for ExampleClient {
     }
 }
 
+struct MainService {}
+impl eventually_generated::ExampleUserServiceSubscriber for MainService {}
+
 struct Module {
     their_example: Arc<ExampleClient>,
     another_example: Arc<ExampleClient>,
@@ -54,14 +57,16 @@ impl eventually_generated::OnReadySubscriber for Module {
 fn main() {
     let their_example = Arc::new(ExampleClient::new());
     let another_example = Arc::new(ExampleClient::new());
+    let main_service = Arc::new(MainService {});
     let module = Arc::new(Module {
         their_example: their_example.clone(),
         another_example: another_example.clone(),
         min_current: Mutex::new(None),
     });
     let _ = eventually_generated::Module::new(
+        module.clone(),
+        main_service.clone(),
         their_example.clone(),
         another_example.clone(),
-        module.clone(),
     );
 }
