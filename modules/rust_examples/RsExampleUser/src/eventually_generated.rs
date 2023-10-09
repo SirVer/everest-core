@@ -1,12 +1,12 @@
 use everestrs::{Error, Result, Runtime, Subscriber};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 /// The publisher for the example module. The class is clone-able and just holds
 /// a shared-ptr to the cpp implementation.
 #[derive(Clone)]
 pub struct ExamplePublisher {
-    runtime: Arc<Mutex<Runtime>>,
+    runtime: Arc<Runtime>,
 }
 
 impl ExamplePublisher {
@@ -21,8 +21,8 @@ impl ExamplePublisher {
         });
         let blob = self
             .runtime
-            .try_lock()
-            .map_err(|_| Error::Internal)?
+            // .try_lock()
+            // .map_err(|_| Error::Internal)?
             .call_command("their_example", "uses_something", &args);
         let return_value: bool =
             ::serde_json::from_value(blob).map_err(|_| Error::InvalidArgument("return_value"))?;
@@ -64,12 +64,13 @@ pub struct Module {
 }
 
 impl Module {
+    #[must_use]
     pub fn new(
         their_example: Arc<dyn ExampleSubscriber>,
         another_example: Arc<dyn ExampleSubscriber>,
         on_ready: Arc<dyn OnReadySubscriber>,
     ) -> Arc<Self> {
-        let runtime = Arc::new(Mutex::new(Runtime::new()));
+        let runtime = Arc::new(Runtime::new());
         let publisher = ModulePublisher {
             their_publisher: ExamplePublisher {
                 runtime: runtime.clone(),
@@ -87,7 +88,7 @@ impl Module {
             // runtime: runtime.clone(),
         });
         let weak_this = Arc::<Module>::downgrade(&this);
-        runtime.lock().unwrap().set_subscriber(weak_this);
+        runtime.set_subscriber(weak_this);
         this
     }
 }

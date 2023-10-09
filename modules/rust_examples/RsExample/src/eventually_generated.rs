@@ -1,73 +1,128 @@
+//! The things which should be eventually generated from the `manifest`.
+//!
+//! The naming convention should be:
+//! `INTERFACE_NAME` `SERVER|CLIENT` `PUBLISHER|SUBSCRIBER`.
+//!
+//! The server publisher implements the publisher for the variables. The
+//! server subscriber is trait where the user implements the RPC callbacks.
+//! The client publisher implements interface for calling the rcps of other
+//! servers. The client subscriber is a trait where the user implements
+//! callbacks for changed variables.
+
+use everestrs::{Error, Result, Runtime, Subscriber};
 use std::collections::HashMap;
+use std::sync::Arc;
 
-pub trait KvsService {
-    /// This command removes the value stored under a given key
-    ///
-    /// `key`: Key to delete the value for
-    fn delete(&self, key: String) -> everestrs::Result<()>;
+/// The trait for the user to provide. Always part of the generated code.
+pub trait OnReadySubscriber: Sync + Send {
+    fn on_ready(&self, pub_impl: &ModulePublisher);
+}
 
+/// The trait for the user to implement. Generated from the
+/// `manifest.provides.foobar`.
+pub trait ExampleServiceSubscriber: Sync + Send {
     /// This command checks if something is stored under a given key
     ///
+    /// `pub_impl`: Handle to all publishers.
     /// `key`: Key to check the existence for
     ///
     /// Returns: Returns 'True' if something was stored for this key*/
-    fn exists(&self, key: String) -> ::everestrs::Result<bool>;
-
-    /// This command loads the previously stored value for a given key (it will return null if the
-    /// key does not exist)
-    ///
-    /// `key`: Key to load the value for
-    ///
-    /// Returns: The previously stored value
-    fn load(&self, key: String) -> ::everestrs::Result<serde_json::Value>;
-
-    /// This command stores a value under a given key
-    ///
-    /// `key`: Key to store the value for
-    /// `value`: Value to store
-    fn store(&self, key: String, value: ::serde_json::Value) -> ::everestrs::Result<()>;
+    fn uses_something(&self, pub_impl: &ModulePublisher, key: String) -> Result<bool>;
 }
 
-/// This interface defines an example interface that uses multiple framework features
-pub trait ExampleService {
-    /// This command checks if something is stored under a given key
-    ///
-    /// `key`: Key to check the existence for
-    ///
-    /// Returns: Returns 'True' if something was stored for this key*/
-    fn uses_something(&self, key: String) -> ::everestrs::Result<bool>;
+/// The publisher generated from `manifest.provides.foobar`.
+#[derive(Clone)]
+#[allow(unused)]
+pub struct ExampleServicePublisher {
+    runtime: Arc<Runtime>,
 }
 
-pub struct FoobarPublisher {
-    raw_publisher: everestrs::RawPublisher,
-}
-
-impl FoobarPublisher {
-    pub fn publish_max_current(&self, max_current: f64) -> ::everestrs::Result<()> {
-        self.raw_publisher
+impl ExampleServicePublisher {
+    pub fn max_current(&self, max_current: f64) -> Result<()> {
+        self.runtime
             .publish_variable("foobar", "max_current", &max_current);
         Ok(())
     }
 }
 
-/// This interface defines a simple key-value-store interface
-pub struct KvsClient {
-    raw_publisher: everestrs::RawPublisher,
+/// The trait for the user to implement. Generated from
+/// `manifest.provides.my_store`.
+pub trait KvsServiceSubscriber: Sync + Send {
+    /// This command removes the value stored under a given key
+    ///
+    /// `pub_impl`: Handle to all publishers.
+    /// `key`: Key to delete the value for
+    fn delete(&self, pub_impl: &ModulePublisher, key: String) -> Result<()>;
+
+    /// This command checks if something is stored under a given key
+    ///
+    /// `pub_impl`: Handle to all publishers.
+    /// `key`: Key to check the existence for
+    ///
+    /// Returns: Returns 'True' if something was stored for this key*/
+    fn exists(&self, pub_impl: &ModulePublisher, key: String) -> Result<bool>;
+
+    /// This command loads the previously stored value for a given key (it will return null if the
+    /// key does not exist)
+    ///
+    /// `pub_impl`: Handle to all publishers.
+    /// `key`: Key to load the value for
+    ///
+    /// Returns: The previously stored value
+    fn load(&self, pub_impl: &ModulePublisher, key: String) -> Result<serde_json::Value>;
+
+    /// This command stores a value under a given key
+    ///
+    /// `pub_impl`: Handle to all publishers.
+    /// `key`: Key to store the value for
+    /// `value`: Value to store
+    fn store(
+        &self,
+        pub_impl: &ModulePublisher,
+        key: String,
+        value: ::serde_json::Value,
+    ) -> Result<()>;
 }
 
-impl KvsClient {
+/// The publisher for the KvsService. Generated from `manifest.provides.my_store`.
+///
+/// The Kvs does not publish anything - so this struct is a Noop. Eventually
+/// the code generation might be smart enough to "optimize" such things away but
+/// here we include it for completeness.
+#[derive(Clone)]
+pub struct KvsServicePublisher {
+    #[allow(unused)]
+    runtime: Arc<Runtime>,
+}
+
+impl KvsServicePublisher {}
+
+/// The subscriber for the KvsClient. Generated from
+/// `manifest.requires.their_store`.
+///
+/// The Kvs does not publish any variables, therefore the subscriber is empty.
+/// Eventually our code generation might be smart enough to omit this, but here
+/// we include it for completeness.
+pub trait KvsClientSubscriber: Sync + Send {}
+
+/// This interface defines a simple key-value-store interface. Generated from
+/// `manifest.requires.their_store`.
+#[derive(Clone)]
+pub struct KvsClientPublisher {
+    runtime: Arc<Runtime>,
+}
+
+impl KvsClientPublisher {
     /// This command removes the value stored under a given key
     ///
     /// `key`: Key to delete the value for
-    pub fn delete(&self, key: String) -> everestrs::Result<()> {
+    pub fn delete(&self, key: String) -> Result<()> {
         let args = serde_json::json!({
             "key": key,
         });
-        let blob = self
-            .raw_publisher
-            .call_command("their_store", "delete", &args);
-        let return_value: () = ::serde_json::from_value(blob)
-            .map_err(|_| everestrs::Error::InvalidArgument("return_value"))?;
+        let blob = self.runtime.call_command("their_store", "delete", &args);
+        let return_value: () =
+            ::serde_json::from_value(blob).map_err(|_| Error::InvalidArgument("return_value"))?;
         Ok(return_value)
     }
 
@@ -76,7 +131,7 @@ impl KvsClient {
     /// `key`: Key to check the existence for
     ///
     /// Returns: Returns 'True' if something was stored for this key*/
-    pub fn exists(&self, key: String) -> ::everestrs::Result<bool> {
+    pub fn exists(&self, key: String) -> Result<bool> {
         // NOCOM(#sirver): Implement
         todo!();
     }
@@ -87,7 +142,7 @@ impl KvsClient {
     /// `key`: Key to load the value for
     ///
     /// Returns: The previously stored value
-    pub fn load(&self, key: String) -> ::everestrs::Result<serde_json::Value> {
+    pub fn load(&self, key: String) -> Result<serde_json::Value> {
         // NOCOM(#sirver): Implement
         todo!();
     }
@@ -96,25 +151,63 @@ impl KvsClient {
     ///
     /// `key`: Key to store the value for
     /// `value`: Value to store
-    pub fn store(&self, key: String, value: ::serde_json::Value) -> ::everestrs::Result<()> {
+    pub fn store(&self, key: String, value: ::serde_json::Value) -> Result<()> {
         // NOCOM(#sirver): Implement
         todo!();
     }
 }
 
-pub trait Module: Sized {
-    fn on_ready(&self) {}
-    fn foobar(&self) -> &dyn ExampleService;
-    fn my_store(&self) -> &dyn KvsService;
+pub struct ModulePublisher {
+    pub foobar_publisher: ExampleServicePublisher,
+    pub my_store_publisher: KvsServicePublisher,
+    pub their_store_publisher: KvsClientPublisher,
 }
 
-/// We want the user to just implement the `Module` trait above to get access to everything that
-/// EVerest has to offer, however for the `everestrs` library, we have to implement the
-/// `GenericModule`. This thin wrapper does the translation between the generic module and the
-/// specific implementation provided by the user.
-pub struct GenericToSpecificModuleProxy<T: Module>(T);
+pub struct Module {
+    /// All subscribers
+    on_ready: Arc<dyn OnReadySubscriber>,
+    foobar: Arc<dyn ExampleServiceSubscriber>,
+    my_store: Arc<dyn KvsServiceSubscriber>,
+    their_store: Arc<dyn KvsClientSubscriber>,
 
-impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
+    // The publisher
+    publisher: ModulePublisher,
+}
+
+impl Module {
+    #[must_use]
+    pub fn new(
+        on_ready: Arc<dyn OnReadySubscriber>,
+        foobar: Arc<dyn ExampleServiceSubscriber>,
+        my_store: Arc<dyn KvsServiceSubscriber>,
+        their_store: Arc<dyn KvsClientSubscriber>,
+    ) -> Arc<Self> {
+        let runtime = Arc::new(Runtime::new());
+        let this = Arc::new(Self {
+            on_ready,
+            foobar,
+            my_store,
+            their_store,
+            publisher: ModulePublisher {
+                foobar_publisher: ExampleServicePublisher {
+                    runtime: runtime.clone(),
+                },
+                my_store_publisher: KvsServicePublisher {
+                    runtime: runtime.clone(),
+                },
+                their_store_publisher: KvsClientPublisher {
+                    runtime: runtime.clone(),
+                },
+            },
+        });
+
+        runtime.set_subscriber(Arc::<Module>::downgrade(&this));
+
+        this
+    }
+}
+
+impl Subscriber for Module {
     #[allow(unused_variables)]
     fn handle_command(
         &self,
@@ -123,8 +216,15 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
         parameters: HashMap<String, serde_json::Value>,
     ) -> ::everestrs::Result<serde_json::Value> {
         match implementation_id {
-            "foobar" => foobar::handle_command(self.0.foobar(), cmd_name, parameters),
-            "my_store" => my_store::handle_command(self.0.my_store(), cmd_name, parameters),
+            "foobar" => {
+                foobar::handle_command(&self.publisher, self.foobar.as_ref(), cmd_name, parameters)
+            }
+            "my_store" => my_store::handle_command(
+                &self.publisher,
+                self.my_store.as_ref(),
+                cmd_name,
+                parameters,
+            ),
             _ => Err(everestrs::Error::InvalidArgument(
                 "Unknown implementation_id called.",
             )),
@@ -146,21 +246,8 @@ impl<T: Module> everestrs::GenericModule for GenericToSpecificModuleProxy<T> {
     }
 
     fn on_ready(&self) {
-        self.0.on_ready()
+        self.on_ready.on_ready(&self.publisher)
     }
-}
-
-pub fn init_from_commandline<T: Module + 'static>(
-    init_module: impl FnOnce(FoobarPublisher, KvsClient) -> T,
-) -> everestrs::Runtime {
-    everestrs::Runtime::from_commandline(|raw_publisher| {
-        let foobar_publisher = FoobarPublisher {
-            raw_publisher: raw_publisher.clone(),
-        };
-        let their_store_client = KvsClient { raw_publisher };
-        let specific_module = init_module(foobar_publisher, their_store_client);
-        GenericToSpecificModuleProxy(specific_module)
-    })
 }
 
 mod foobar {
@@ -168,7 +255,8 @@ mod foobar {
 
     #[allow(unused_variables)]
     pub(super) fn handle_command(
-        foobar_service: &dyn super::ExampleService,
+        pub_impl: &super::ModulePublisher,
+        foobar_service: &dyn super::ExampleServiceSubscriber,
         cmd_name: &str,
         mut parameters: HashMap<String, serde_json::Value>,
     ) -> ::everestrs::Result<serde_json::Value> {
@@ -181,7 +269,7 @@ mod foobar {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("key"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = foobar_service.uses_something(key)?;
+                let retval = foobar_service.uses_something(pub_impl, key)?;
                 Ok(retval.into())
             }
             _ => Err(everestrs::Error::InvalidArgument("Unknown command called.")),
@@ -193,7 +281,8 @@ mod my_store {
     use std::collections::HashMap;
 
     pub(super) fn handle_command(
-        my_store_service: &dyn super::KvsService,
+        pub_impl: &super::ModulePublisher,
+        my_store_service: &dyn super::KvsServiceSubscriber,
         cmd_name: &str,
         mut parameters: HashMap<String, serde_json::Value>,
     ) -> ::everestrs::Result<serde_json::Value> {
@@ -206,7 +295,7 @@ mod my_store {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("key"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = my_store_service.delete(key)?;
+                let retval = my_store_service.delete(pub_impl, key)?;
                 Ok(retval.into())
             }
             "exists" => {
@@ -217,7 +306,7 @@ mod my_store {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("key"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = my_store_service.exists(key)?;
+                let retval = my_store_service.exists(pub_impl, key)?;
                 Ok(retval.into())
             }
             "load" => {
@@ -228,7 +317,7 @@ mod my_store {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("key"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = my_store_service.load(key)?;
+                let retval = my_store_service.load(pub_impl, key)?;
                 Ok(retval.into())
             }
             "store" => {
@@ -245,7 +334,7 @@ mod my_store {
                 )
                 .map_err(|_| everestrs::Error::InvalidArgument("value"))?;
                 #[allow(clippy::let_unit_value)]
-                let retval = my_store_service.store(key, value)?;
+                let retval = my_store_service.store(pub_impl, key, value)?;
                 Ok(retval.into())
             }
             _ => Err(everestrs::Error::InvalidArgument("Unknown command called.")),
