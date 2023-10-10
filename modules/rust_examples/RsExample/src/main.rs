@@ -1,5 +1,6 @@
-mod eventually_generated;
-use eventually_generated::{
+include!(concat!(env!("OUT_DIR"), "/generated.rs"));
+
+use generated::{
     ExampleServiceSubscriber, KvsClientSubscriber, KvsServiceSubscriber, Module, ModulePublisher,
     OnReadySubscriber,
 };
