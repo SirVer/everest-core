@@ -5,11 +5,6 @@ pub fn main() {
         .generate()
         .unwrap();
 
-    // NOCOM(#sirver): remove
-    Builder::new("manifest.yaml", "../../..")
-        .out_dir("tmp/")
-        .generate()
-        .unwrap();
-
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=manifest.yaml");
 }

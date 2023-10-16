@@ -195,6 +195,7 @@ name = "rs_example_user"
 version = "0.1.0"
 dependencies = [
  "everestrs",
+ "everestrs-build",
  "serde",
  "serde_json",
 ]

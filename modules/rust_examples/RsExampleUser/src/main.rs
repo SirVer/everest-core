@@ -1,7 +1,10 @@
+include!(concat!(env!("OUT_DIR"), "/generated.rs"));
+
+use generated::{
+    ExampleClientSubscriber, ExampleUserServiceSubscriber, ModulePublisher, OnReadySubscriber,
+};
 use std::sync::{Arc, Mutex};
 use std::thread;
-
-mod eventually_generated;
 
 struct ExampleClient {
     max_current: Mutex<Option<f64>>,
@@ -17,8 +20,8 @@ impl ExampleClient {
     }
 }
 
-impl eventually_generated::ExampleSubscriber for ExampleClient {
-    fn on_max_current(&self, publishers: &eventually_generated::ModulePublisher, value: f64) {
+impl ExampleClientSubscriber for ExampleClient {
+    fn on_max_current(&self, publishers: &ModulePublisher, value: f64) {
         println!("Received the value {value}");
         let _ = publishers
             .their_example
@@ -35,7 +38,7 @@ impl eventually_generated::ExampleSubscriber for ExampleClient {
 }
 
 struct MainService {}
-impl eventually_generated::ExampleUserServiceSubscriber for MainService {}
+impl ExampleUserServiceSubscriber for MainService {}
 
 struct Module {
     their_example: Arc<ExampleClient>,
@@ -43,8 +46,8 @@ struct Module {
     min_current: Mutex<Option<f64>>,
 }
 
-impl eventually_generated::OnReadySubscriber for Module {
-    fn on_ready(&self, _pub_impl: &eventually_generated::ModulePublisher) {
+impl OnReadySubscriber for Module {
+    fn on_ready(&self, _pub_impl: &ModulePublisher) {
         let mut their_current = self.their_example.max_current.lock().unwrap();
         let mut another_current = self.another_example.max_current.lock().unwrap();
         *their_current = Some(1.);
@@ -63,7 +66,7 @@ fn main() {
         another_example: another_example.clone(),
         min_current: Mutex::new(None),
     });
-    let _ = eventually_generated::Module::new(
+    let _ = generated::Module::new(
         module.clone(),
         main_service.clone(),
         their_example.clone(),

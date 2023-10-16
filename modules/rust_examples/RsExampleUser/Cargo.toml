@@ -3,6 +3,9 @@ name = "rs_example_user"
 version = "0.1.0"
 edition = "2021"
 
+[build-dependencies]
+everestrs-build = { path = "../../../../everest-framework/everestrs/everestrs-build" }
+
 [dependencies]
 everestrs = { path = "../../../../everest-framework/everestrs/everestrs" }
 serde = { version = "1.0.175", features = ["derive"] }
